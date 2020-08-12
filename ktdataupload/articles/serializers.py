@@ -5,8 +5,8 @@ from .models import Article, Context, Question, Treatment
 
 class QuestionSerializer(serializers.Serializer):
     idQuestion = serializers.ReadOnlyField(source='id')
-    question = serializers.ReadOnlyField()
-    answer = serializers.ReadOnlyField()
+    question = serializers.CharField()
+    answer = serializers.CharField()
     class Meta:
         model = Question
         fields = (
@@ -20,19 +20,23 @@ class QuestionSerializer(serializers.Serializer):
         instance.save()
         return instance
     
-
 class ContextSerializer(serializers.Serializer):
+    # Read only
     idContext = serializers.ReadOnlyField(source='id')
-    context = serializers.CharField()
-    #idArticle = serializers.PrimaryKeyRelatedField(write_only=True, queryset=Article.objects.all())
-    idTreatment = serializers.PrimaryKeyRelatedField(write_only=True, queryset=Treatment.objects.all())
     treatment = serializers.SlugRelatedField(
         source='idTreatment',
         many=False, 
         read_only=True, 
         slug_field='treatment'
     ) 
-    questions = QuestionSerializer(many=True, read_only=True)
+    
+    # Write only
+    #idArticle = serializers.PrimaryKeyRelatedField(write_only=True, queryset=Article.objects.all())
+    idTreatment = serializers.PrimaryKeyRelatedField(write_only=True, queryset=Treatment.objects.all())
+    
+    # Read Write
+    context = serializers.CharField()
+    questions = QuestionSerializer(many=True)
     
     class Meta:
         model = Context
@@ -45,12 +49,6 @@ class ContextSerializer(serializers.Serializer):
         instance = Context()
         instance.context = data.get('context')
         instance.idArticle = data.get('idArticle')
-        instance.idTreatment = data.get('idTreatment')
-        instance.save()
-        return instance
-
-    def update(self, instance, data):
-        instance.context = data.get('context')
         instance.idTreatment = data.get('idTreatment')
         instance.save()
         return instance
@@ -76,17 +74,36 @@ class ArticleCreateSerializer(serializers.ModelSerializer):
         instance.save()
         return instance
 
+class ArticleUpdateSerializer(serializers.ModelSerializer):
+    contexts = ContextSerializer(many=True)
+    class Meta:
+        model = Article
+        fields = (
+            'id', 'title', 'author', 'year',
+            'description', 'contexts',    
+        )
+        depth = 1
+    
     def update(self, instance, data):
         instance.title = data.get('title')
         instance.author = data.get('author')
         instance.year = data.get('year')
         instance.description = data.get('description')
-        instance.idUser = data.get('idUser')
         instance.save()
-
-        contexts = Context.objects.filter(idArticle=instance.id)
-        contexts.delete()
-        contexts = ContextSerializer(data=instance.contexts)
+        contexts_data = data.pop('contexts')
+        for context_data in contexts_data:
+            context = Context.objects.create(
+                idTreatment=context_data.get('idTreatment'),
+                idArticle=instance,
+                context=context_data.get('context')
+            )
+            questions_data = context_data.pop('questions')
+            for question_data in questions_data:
+                Question.objects.create(
+                    idContext=context,
+                    question=question_data.get('question'),
+                    answer=question_data.get('answer')
+                )
         return instance
 
 class ArticleListSerializer(serializers.ModelSerializer):
@@ -96,8 +113,8 @@ class ArticleListSerializer(serializers.ModelSerializer):
         read_only=True, 
         slug_field='username'
     )
-    urlArticle = serializers.ImageField(source='file')
-    contexts = ContextSerializer(many=True, read_only=True)
+    urlArticle = serializers.ImageField(read_only=True, source='file')
+    contexts = ContextSerializer(many=True)
     class Meta:
         model = Article
         fields = (
@@ -117,42 +134,34 @@ class ArticleListSerializer(serializers.ModelSerializer):
         instance.save()
         return instance
 
-
-
-
-
-
-
-class ArticleSerializer(serializers.ModelSerializer):
-    idUser = serializers.PrimaryKeyRelatedField(write_only=True, queryset=User.objects.all())
-    reviewer = serializers.SlugRelatedField(
-        source='idUser',
-        many=False, 
-        read_only=True, 
-        slug_field='username'
-    )
-    urlArticle = serializers.ImageField(source='file')
-    contexts = ContextSerializer(many=True, read_only=True)
+class ArticleReviewSerializer(serializers.ModelSerializer):
+    idArticle = serializers.ReadOnlyField(source='id')
+    idUser = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())
+    contexts = ContextSerializer(many=True)
     class Meta:
         model = Article
         fields = (
-            'id', 'title', 'author', 'year', 'urlArticle',
-            'description', 'idUser', 'reviewer', 'contexts',    
+            'idUser', 'idArticle', 'contexts', 
         )
         depth = 1
     
-    def create(self, data):
-        instance = Article()
-        instance.title = data.get('title')
-        instance.author = data.get('author')
-        instance.year = data.get('year')
-        instance.file = data.get('file')
-        instance.description = data.get('description')
-        instance.idUser = data.get('idUser')
+    def update(self, instance, data):
+        instance.processed = 1
         instance.save()
+        contexts_data = data.pop('contexts')
+        for context_data in contexts_data:
+            context = Context.objects.create(
+                idTreatment=context_data.get('idTreatment'),
+                idArticle=instance,
+                context=context_data.get('context')
+            )
+            questions_data = context_data.pop('questions')
+            for question_data in questions_data:
+                Question.objects.create(
+                    idContext=context,
+                    question=question_data.get('question'),
+                    answer=question_data.get('answer')
+                )
         return instance
-
-
-
 
 

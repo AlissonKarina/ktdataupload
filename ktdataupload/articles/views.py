@@ -2,8 +2,10 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import status
 
-from .serializers import (ArticleListSerializer, ArticleCreateSerializer)
-from .models import Article
+from .serializers import (ArticleListSerializer, ArticleCreateSerializer, 
+                          ArticleUpdateSerializer, ArticleReviewSerializer,
+                          ContextSerializer)
+from .models import Article, Context
 
 
 # Create your views here.
@@ -39,14 +41,33 @@ class ArticleAPI(APIView):
 
     def put(self, request, idArticle):
         article = Article.objects.get(id=idArticle)
-        serializer = ArticleCreateSerializer(article, data = request.data)
+        
+        # Eliminación de contexts
+        Context.objects.filter(idArticle=idArticle).delete()
 
+        # Serializer para modificar Article, actualización de contexts y questions
+        serializer = ArticleUpdateSerializer(article, data = request.data)
+        
         if serializer.is_valid():
             serializer.save()
-            return Response({"state": "Actualizado Exitosamente", "object":serializer.data}, status=status.HTTP_201_CREATED)
+            return Response({"state": "Actualizado Exitosamente", "object":serializer.data}, status=status.HTTP_200_OK)
         else:
             return Response(serializer.errors, status = status.HTTP_400_BAD_REQUEST)
 
-    def delete(self, request):
-        return Response(serializer.data, status=status.HTTP_200_OK)
+    def delete(self, request, idArticle):
+        article = Article.objects.get(id=idArticle)
+        article.delete()
+        return Response({"state": "Eliminado Exitosamente"}, status=status.HTTP_204_NO_CONTENT)
     
+
+class ReviewAPI(APIView):
+    def post(self, request):
+        article = Article.objects.get(id=request.data.get('idArticle'))
+        serializer = ArticleReviewSerializer(article, data = request.data)
+        
+        if serializer.is_valid():
+            serializer.save()
+            return Response({"state": "Revisado Exitosamente", "object":serializer.data}, status=status.HTTP_201_CREATED)
+        else:
+            return Response(serializer.errors, status = status.HTTP_400_BAD_REQUEST)
+        pass
