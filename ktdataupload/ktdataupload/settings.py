@@ -131,3 +131,8 @@ MEDIA_URL = '/media/'
 # Ruta absoluta del sistema de archivos al directorio 
 # que contendrá los archivos cargados por el usuario 
 MEDIA_ROOT = os.path.join(BASE_DIR, "media")
+
+
+CORS_ORIGIN_ALLOW_ALL = True
+CORS_ALLOW_CREDENTIALS = True
+CORS_ORIGIN_WHITELIST = ['http://localhost:4200', 'https://keratreat-kt.web.app']
