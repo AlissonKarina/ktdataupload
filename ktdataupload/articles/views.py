@@ -4,11 +4,17 @@ from rest_framework import status
 
 from .serializers import (ArticleListSerializer, ArticleCreateSerializer, 
                           ArticleUpdateSerializer, ArticleReviewSerializer,
-                          ContextSerializer)
-from .models import Article, Context
+                          ContextSerializer, TreatmentListSerializer)
+from .models import Article, Context, Treatment
 
 
 # Create your views here.
+
+class TreatmentAPI(APIView):
+    def get(self, request):
+        treatments = Treatment.objects.all()
+        serializer = TreatmentListSerializer(treatments, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 class ArticleAPI(APIView):
     def get(self, request, idUser):

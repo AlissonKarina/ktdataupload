@@ -3,6 +3,16 @@ from django.contrib.auth.models import User
 
 from .models import Article, Context, Question, Treatment
 
+class TreatmentListSerializer(serializers.ModelSerializer):
+    idTreatment = serializers.ReadOnlyField(source='id')
+    abbreviation = serializers.ReadOnlyField()
+    treatment = serializers.ReadOnlyField()
+    class Meta:
+        model = Treatment
+        fields = (
+            'idTreatment', 'abbreviation', 'treatment',
+        )
+
 class QuestionSerializer(serializers.Serializer):
     idQuestion = serializers.ReadOnlyField(source='id')
     question = serializers.CharField()
